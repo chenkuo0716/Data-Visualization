@@ -1,0 +1,122 @@
+---
+title: "Rattrapage"
+author: "KUO CHEN"
+date: "31/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Init
+```{r Init}
+library(ggplot2)
+library(ggrepel)
+library(formattable)
+library(dplyr)
+library(openxlsx)
+library(waffle)
+
+df <- read.csv("/Users/ck/Downloads/fr_esr_sise_diplomes_delivres_esr_public.csv", sep = ";")
+```
+
+## Ex1
+# 1.
+```{r Ex1-1}
+df_1.1 <- data.frame(GD_DISCIPLINE_r = df$GD_DISCIPLINE_r, num = df$Nombre.de.diplomes.délivrés)
+df_1.1 <- df_1.1 %>%
+  group_by(GD_DISCIPLINE_r) %>%
+  summarise(Nombre.de.diplomes.délivrés = sum(num))
+
+p_1.1 <- ggplot(df_1.1, aes(x = Nombre.de.diplomes.délivrés, y = GD_DISCIPLINE_r)) +
+  geom_bar(stat= "identity") +
+  theme(axis.text = element_text(size = 5))
+p_1.1
+```
+
+# 2.
+```{r Ex1-2}
+df_1.2 <- df_1.1 %>%
+  group_by(GD_DISCIPLINE_r) %>%
+  summarise(Nombre.de.diplomes.délivrés = sum(Nombre.de.diplomes.délivrés)) %>%
+  mutate(percentage = percent(Nombre.de.diplomes.délivrés / sum(Nombre.de.diplomes.délivrés)))
+
+p_1.2 <- ggplot(df_1.2, aes(x = percentage*100,  y = GD_DISCIPLINE_r)) +
+  geom_bar(stat = "identity",color = "purple", fill = "purple") +
+  labs(x = "%", y="") +
+  geom_text(aes(label=percentage), vjust = 0, size = 2) +
+  theme(text = element_text(size=rel(3)))
+p_1.2
+```
+
+# 3.
+```{r Ex1-3}
+p_1.3 <- ggplot(df_1.2, aes(x = "", y = percentage, fill = GD_DISCIPLINE_r)) +
+  geom_bar(stat = 'identity', position = 'stack', width = 1) +
+  coord_polar(theta = 'y') +
+  theme(axis.text.x = element_blank()) +
+  geom_text(aes(x = 1.2, y = percentage/4 + c(0, cumsum(percentage)[-length(percentage)]), label = percentage), colour = "white", size = 3)
+p_1.3
+```
+
+## Ex2
+# 1.
+```{r Ex2-1}
+df_2.1 <- data.frame(num_total = df$Nombre.total.de.diplomes.délivrés, num_int = df$Nombre.de.diplomes.intermédiaires.délivrés, GD_DISCIPLINE_r = df$GD_DISCIPLINE_r)
+df_2.1 <- df_2.1 %>%
+  group_by(GD_DISCIPLINE_r) %>%
+  summarise(som_dip_total = sum(num_total), som_dip_inter = sum(num_int))
+
+p_2.1 <- ggplot(df_2.1, aes(x = som_dip_total, y = som_dip_inter)) +
+  geom_point() +
+  geom_text(aes(x = som_dip_total, y = som_dip_inter, label = GD_DISCIPLINE_r))
+p_2.1
+```
+
+# 2.
+```{r Ex2-2}
+p_2.2 <- ggplot(df_2.1, aes(x = som_dip_total, y = som_dip_inter)) +
+  geom_point() +
+  geom_text_repel(aes(x = som_dip_total, y = som_dip_inter, label = GD_DISCIPLINE_r))
+p_2.2
+```
+
+## Ex3
+```{r Ex3}
+df_3 <- data.frame(dip = df$Secteur.disciplinaire, num = df$Nombre.total.de.diplomes.délivrés, ville = df$`Académie.du.siège.de.l'établissement`)
+df_3$dip <- str(df_3$dip)
+df_3_math <- df_3[df_3$dip == "Mathématiques appliquées et sciences sociales"]
+df_3_math <- df_3_math %>%
+  group_by(ville) %>%
+  summarise(num = sum(num)) %>%
+  mutate(dip = "Mathématiques appliquées et sciences sociales" ,percentage = percent(num / sum(num)))
+
+df_3_info <- df_3[df_3$dip == "Informatique"]
+df_3_info <- df_3_info %>%
+  group_by(ville) %>%
+  summarise(num = sum(num)) %>%
+  mutate(dip = "Informatique" ,percentage = percent(num / sum(num)))
+
+df_3 <- merge(df_3_math, df_3_info, by = "ville")
+
+p_3 <- ggplot(df_3, aes(x = percentage*100,  y = ville, fill = dip)) +
+  geom_bar(stat = "identity", position="dodge", width=0.8) +
+  labs(x = "%", y="") +
+  geom_text(aes(label=percentage), vjust = 0, size = 2) +
+  theme(text = element_text(size=rel(3)))
+p_3
+```
+
+## Ex4
+```{r Ex4}
+df_4 <- data.frame(Diplômes_délivrés = sum(df$Nombre.de.diplomes.délivrés)/(sum(df$Nombre.de.diplomes.délivrés)+sum(df$Nombre.de.diplomes.intermédiaires.délivrés))*82, Diplômes_intermédiaires_délivrés = sum(df$Nombre.de.diplomes.intermédiaires.délivrés)/(sum(df$Nombre.de.diplomes.délivrés)+sum(df$Nombre.de.diplomes.intermédiaires.délivrés))*82)
+p_4 <- waffle(df_4, rows = 9, colors = c("green", "red"), size = 0.3, legend_pos = "right")
+p_4
+```
